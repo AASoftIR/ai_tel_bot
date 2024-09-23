@@ -7,9 +7,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 app = Flask(__name__)
 
 # Add your bot token and channel details here
-BOT_TOKEN = 'your-telegram-bot-token'
+BOT_TOKEN = '7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU'
 CHANNEL_USERNAME = 'aasoft_ir'
-GEMINI_API_KEY = 'your-gemini-api-key'
+GEMINI_API_KEY = 'AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg'
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
 
 # Create the bot application
@@ -72,4 +72,5 @@ def check_channel_membership(user_id):
 application.add_handler(CommandHandler("ai", ai))
 
 if __name__ == '__main__':
-    app.run(port=5000)
+    port = int(os.environ.get('PORT', 5000))  # Get the PORT from environment or default to 5000
+    app.run(host='0.0.0.0', port=port)
