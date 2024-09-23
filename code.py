@@ -1,29 +1,29 @@
 import os
 import requests
 from flask import Flask, request
-from telegram import Bot, Update
-from telegram.ext import CommandHandler, Dispatcher
-from telegram.utils.request import Request
+from telegram import Update, Bot
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 app = Flask(__name__)
 
 # Add your bot token and channel details here
-BOT_TOKEN = '7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU'
+BOT_TOKEN = 'your-telegram-bot-token'
 CHANNEL_USERNAME = 'aasoft_ir'
-GEMINI_API_KEY = 'AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg'
+GEMINI_API_KEY = 'your-gemini-api-key'
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
 
-bot = Bot(token=BOT_TOKEN)
+# Create the bot application
+application = ApplicationBuilder().token(BOT_TOKEN).build()
 
 # Webhook route
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    update = Update.de_json(request.get_json(), bot)
-    dispatcher.process_update(update)
+    update = Update.de_json(request.get_json(), application.bot)
+    application.process_update(update)
     return 'OK'
 
 # AI command handler
-def ai(update, context):
+async def ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     question = update.message.text.replace('/ai', '').strip()
 
@@ -31,20 +31,19 @@ def ai(update, context):
     is_member = check_channel_membership(user.id)
 
     if not is_member:
-        update.message.reply_text("❌ You must be a member of @aasoft_ir to use this bot.")
+        await update.message.reply_text("❌ You must be a member of @aasoft_ir to use this bot.")
         return
 
     if question:
-        response = get_gemini_response(question)
+        response = await get_gemini_response(question)
         if response:
-            update.message.reply_text(f"🤖 Here's what AI has to say: \n\n{response}")
+            await update.message.reply_text(f"🤖 Here's what AI has to say: \n\n{response}")
         else:
-            update.message.reply_text("⚠️ Oops, something went wrong while contacting the AI!")
+            await update.message.reply_text("⚠️ Oops, something went wrong while contacting the AI!")
     else:
-        update.message.reply_text("💡 Please ask a question like this: `/ai YOUR QUESTION`")
+        await update.message.reply_text("💡 Please ask a question like this: `/ai YOUR QUESTION`")
 
-def get_gemini_response(question):
-    # Make request to Gemini API
+async def get_gemini_response(question):
     data = {
         "contents": [
             {
@@ -57,7 +56,6 @@ def get_gemini_response(question):
         response = requests.post(GEMINI_URL, json=data, headers=headers)
         response_json = response.json()
 
-        # Extract the AI response text
         return response_json['candidates'][0]['content']['parts'][0]['text']
     except Exception as e:
         print(f"Error contacting Gemini API: {e}")
@@ -65,15 +63,13 @@ def get_gemini_response(question):
 
 def check_channel_membership(user_id):
     try:
-        result = bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)
+        result = application.bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)
         return result.status in ['member', 'administrator', 'creator']
     except:
         return False
 
-# Set up dispatcher and handlers
-dispatcher = Dispatcher(bot, None, workers=0)
-dispatcher.add_handler(CommandHandler("ai", ai))
+# Add command handler
+application.add_handler(CommandHandler("ai", ai))
 
 if __name__ == '__main__':
-    # Flask will run the webhook
     app.run(port=5000)
