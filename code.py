@@ -1,10 +1,7 @@
 import os
 import requests
-from flask import Flask, request
-from telegram import Update, Bot
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-
-app = Flask(__name__)
 
 # Add your bot token and channel details here
 BOT_TOKEN = '7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU'
@@ -14,13 +11,6 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.
 
 # Create the bot application
 application = ApplicationBuilder().token(BOT_TOKEN).build()
-
-# Webhook route
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    update = Update.de_json(request.get_json(), application.bot)
-    application.process_update(update)
-    return 'OK'
 
 # AI command handler
 async def ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -71,6 +61,7 @@ def check_channel_membership(user_id):
 # Add command handler
 application.add_handler(CommandHandler("ai", ai))
 
+# Start polling
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Get the PORT from environment or default to 5000
-    app.run(host='0.0.0.0', port=port)
+    print("Bot is polling...")
+    application.run_polling()  # Use polling instead of webhook
