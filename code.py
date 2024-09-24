@@ -18,7 +18,7 @@ async def ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question = update.message.text.replace('/ai', '').strip()
 
     # Check if user is a member of the channel
-    is_member = check_channel_membership(user.id)
+    is_member = await check_channel_membership(user.id)  # Fixed to await
 
     if not is_member:
         await update.message.reply_text("❌ You must be a member of @aasoft_ir to use this bot.")
@@ -51,11 +51,12 @@ async def get_gemini_response(question):
         print(f"Error contacting Gemini API: {e}")
         return None
 
-def check_channel_membership(user_id):
+async def check_channel_membership(user_id):  # Made async
     try:
-        result = application.bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)
+        result = await application.bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)  # Added await
         return result.status in ['member', 'administrator', 'creator']
-    except:
+    except Exception as e:
+        print(f"Error checking membership: {e}")
         return False
 
 # Add command handler
