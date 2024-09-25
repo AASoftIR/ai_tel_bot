@@ -5,6 +5,7 @@ import requests
 from functools import partial
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from flask import Flask
 
 # Configure logging
 logging.basicConfig(
@@ -108,3 +109,10 @@ if __name__ == "__main__":
 
     # Run the bot
     loop.run_forever()
+
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
