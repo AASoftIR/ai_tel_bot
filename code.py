@@ -3,14 +3,15 @@ import requests
 from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import asyncio
 
-# Add your bot token and channel details here
+# Bot and channel details
 BOT_TOKEN = '7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU'
 CHANNEL_USERNAME = 'aasoft_ir'
 GEMINI_API_KEY = 'AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg'
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
 
-# Create a Flask app
+# Flask app
 app = Flask(__name__)
 
 @app.route('/')
@@ -20,7 +21,7 @@ def hello():
 # Create the bot application
 application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-# /start command handler
+# /start command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     await update.message.reply_text(
@@ -32,7 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "- If you need help, just type /help."
     )
 
-# /help command handler
+# /help command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "ℹ️ *Help Menu*\n\n"
@@ -43,7 +44,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "- Make sure you are a member of @aasoft_ir."
     )
 
-# AI command handler
+# /ai command
 async def ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     question = update.message.text.replace('/ai', '').strip()
@@ -95,17 +96,19 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(CommandHandler("help", help_command))
 application.add_handler(CommandHandler("ai", ai))
 
-# Start polling in the background
-def start_polling():
-    print("Bot is polling...")
-    application.run_polling()
-
-if __name__ == '__main__':
-    # Start the bot in a separate thread
-    from threading import Thread
-    bot_thread = Thread(target=start_polling)
-    bot_thread.start()
+# Use asyncio to run both Flask and the bot
+async def run_bot_and_flask():
+    # Run the bot
+    await application.start()
+    await application.updater.start_polling()
 
     # Run Flask app
-    port = int(os.environ.get('PORT', 10000))
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
+    # Keep bot running
+    await application.updater.idle()
+
+if __name__ == '__main__':
+    # Start the asyncio event loop
+    asyncio.run(run_bot_and_flask())
