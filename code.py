@@ -6,6 +6,7 @@ import requests
 from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from flask import request
 
 # Configure logging
 logging.basicConfig(
@@ -113,9 +114,11 @@ async def setup_bot():
 
 # Flask route to handle webhook
 @app.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
-async def webhook():
+def webhook():
     """Handle incoming updates via webhook."""
-    await application.update_queue.put(Update.de_json(request.get_json(force=True), application.bot))
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    loop = asyncio.get_event_loop()
+    loop.create_task(application.update_queue.put(update))
     return 'OK'
 
 if __name__ == "__main__":
