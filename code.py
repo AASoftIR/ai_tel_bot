@@ -1,12 +1,10 @@
 import os
 import asyncio
 import logging
-from functools import partial
 import requests
-from flask import Flask
+from functools import partial
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-from flask import request
 
 # Configure logging
 logging.basicConfig(
@@ -19,18 +17,10 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = '7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU'
 WEBHOOK_URL = 'https://ai-tel-bot.onrender.com'
 CHANNEL_ID = '@aasoft_ir'
-PORT = int(os.environ.get("PORT", 8080))
 
 if not all([TELEGRAM_BOT_TOKEN, WEBHOOK_URL, CHANNEL_ID]):
     logger.error("Missing required environment variables. Please check your configuration.")
     exit(1)
-
-# Initialize the Flask app
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return "Hello, this is the Flask app running alongside the Telegram bot! 🤖"
 
 # Telegram bot logic
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -46,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /ai command by sending the question to the Gemini API."""
     question = ' '.join(context.args)
-    
+
     if not question:
         await update.message.reply_text("❓ Please provide a question like: /ai What is the weather? 🌤️")
         return
@@ -57,7 +47,7 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     # Call the Gemini API
     response = await call_gemini_api(question)
-    
+
     if response:
         await update.message.reply_text(f"✨ Gemini says: {response}")
     else:
@@ -68,11 +58,11 @@ async def call_gemini_api(question: str) -> str:
     api_url = "https://api.example.com/gemini"  # Replace with actual Gemini API URL
     headers = {"Authorization": "Bearer AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg"}
     payload = {"question": question}
-    
+
     try:
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
-            None, 
+            None,
             partial(requests.post, api_url, json=payload, headers=headers)
         )
         if response.status_code == 200:
@@ -112,19 +102,9 @@ async def setup_bot():
     await application.bot.set_webhook(url=f"{WEBHOOK_URL}/{TELEGRAM_BOT_TOKEN}")
     return application
 
-# Flask route to handle webhook
-@app.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
-def webhook():
-    """Handle incoming updates via webhook."""
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    loop = asyncio.get_event_loop()
-    loop.create_task(application.update_queue.put(update))
-    return 'OK'
-
 if __name__ == "__main__":
-    # Set up the bot and run the Flask app
     loop = asyncio.get_event_loop()
     application = loop.run_until_complete(setup_bot())
-    
-    # Run the Flask app
-    app.run(host='0.0.0.0', port=PORT)
+
+    # Run the bot
+    loop.run_forever()
