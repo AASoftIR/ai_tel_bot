@@ -15,8 +15,10 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 TELEGRAM_BOT_TOKEN = '7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU'
 CHANNEL_ID = '@aasoft_ir'
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
+API_KEY = 'AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg'
 
-if not all([TELEGRAM_BOT_TOKEN, CHANNEL_ID]):
+if not all([TELEGRAM_BOT_TOKEN, CHANNEL_ID, API_KEY]):
     logger.error("Missing required environment variables. Please check your configuration.")
     exit(1)
 
@@ -52,15 +54,21 @@ async def ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_text("⚠️ Sorry, I couldn't get a response from the Gemini API at the moment. Please try again later.")
 
 async def call_gemini_api(question: str) -> str:
-    """Call the Gemini API asynchronously."""
-    api_url = "https://api.example.com/gemini"  # Replace with actual Gemini API URL
-    headers = {"Authorization": "Bearer AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg"}
-    payload = {"question": question}
+    """Call the Google Gemini API asynchronously."""
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "contents": [{
+            "parts": [{"text": question}]
+        }]
+    }
     
     try:
-        response = requests.post(api_url, json=payload, headers=headers)
+        response = requests.post(f"{API_URL}?key={API_KEY}", json=payload, headers=headers)
         if response.status_code == 200:
-            return response.json().get('answer', 'No answer found!')
+            return response.json().get('contents', [{}])[0].get('parts', [{}])[0].get('text', 'No answer found!')
         else:
             logger.error(f"Gemini API error: {response.status_code} - {response.text}")
             return None
