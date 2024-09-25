@@ -1,114 +1,115 @@
-import os
+import asyncio
+import threading
 import requests
 from flask import Flask
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import asyncio
+from telegram.ext import Application, CommandHandler
 
-# Bot and channel details
-BOT_TOKEN = '7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU'
-CHANNEL_USERNAME = 'aasoft_ir'
-GEMINI_API_KEY = 'AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg'
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+# Your bot token and channel information
+TELEGRAM_BOT_TOKEN = "7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU"
+CHANNEL_ID = "@your_channel"
 
-# Flask app
+# Initialize the Flask app
 app = Flask(__name__)
 
 @app.route('/')
-def hello():
-    return "Hello, World! The bot is running."
+def index():
+    return "Hello, this is the Flask app running alongside the Telegram bot! 🤖"
 
-# Create the bot application
-application = ApplicationBuilder().token(BOT_TOKEN).build()
-
-# /start command
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.message.from_user
-    await update.message.reply_text(
-        f"👋 Hi, {user.first_name}!\n\n"
-        "Welcome to the AI-powered Bot!\n"
-        "Here’s what you can do:\n"
-        "- Ask the AI a question using `/ai YOUR QUESTION`\n"
-        "- Make sure you're a member of @aasoft_ir to use the bot.\n"
-        "- If you need help, just type /help."
+# Telegram bot logic
+async def start(update: Update, context):
+    """Send a welcome message when the /start command is issued."""
+    welcome_message = (
+        "👋 Hi! Welcome to the AI-powered bot!\n"
+        "You can ask me any question using /ai command followed by your query.\n"
+        "For example: `/ai What is the meaning of life?` 🧠\n"
+        "Make sure you're subscribed to our channel for full access!"
     )
+    await update.message.reply_text(welcome_message)
 
-# /help command
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "ℹ️ *Help Menu*\n\n"
-        "You can interact with the bot using the following commands:\n"
-        "- /ai YOUR QUESTION: Ask the AI any question and get a response.\n"
-        "- /start: Start the bot and get an introduction.\n"
-        "- /help: Show this help message.\n"
-        "- Make sure you are a member of @aasoft_ir."
-    )
-
-# /ai command
-async def ai(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.message.from_user
-    question = update.message.text.replace('/ai', '').strip()
-
-    # Check if user is a member of the channel
-    is_member = await check_channel_membership(user.id)
-
-    if not is_member:
-        await update.message.reply_text("❌ You must be a member of @aasoft_ir to use this bot.")
+async def ai_command(update: Update, context):
+    """Handle the /ai command by sending the question to the Gemini API."""
+    question = ' '.join(context.args)
+    
+    if not question:
+        await update.message.reply_text("❓ Please provide a question like: /ai What is the weather? 🌤️")
+        return
+    
+    # Check if the user is a member of the channel
+    if not await validate_user(update, context):
         return
 
-    if question:
-        response = await get_gemini_response(question)
-        if response:
-            await update.message.reply_text(f"🤖 Here's what AI has to say: \n\n{response}")
-        else:
-            await update.message.reply_text("⚠️ Oops, something went wrong while contacting the AI!")
+    # Call the Gemini API (you need to implement the actual API call)
+    response = call_gemini_api(question)
+    
+    if response:
+        # Reply with the API's response and an emoji
+        await update.message.reply_text(f"✨ Gemini says: {response}")
     else:
-        await update.message.reply_text("💡 Please ask a question like this: `/ai YOUR QUESTION`")
+        # Handle any issues with the API call
+        await update.message.reply_text("⚠️ Sorry, I couldn't get a response from the Gemini API at the moment. Please try again later.")
 
-async def get_gemini_response(question):
-    data = {
-        "contents": [
-            {
-                "parts": [{"text": question}]
-            }
-        ]
-    }
-    headers = {'Content-Type': 'application/json'}
+def call_gemini_api(question):
+    """Simulate calling the Gemini API (replace this with actual API integration)."""
+    # Simulated response from the API
+    api_url = "https://api.example.com/gemini"  # Placeholder URL
+    headers = {"Authorization": "Bearer AIzaSyBDCeQQBj1FjM0KgD3ZRxYfvkPIxkDv3Vg"}
+    payload = {"question": question}
+    
     try:
-        response = requests.post(GEMINI_URL, json=data, headers=headers)
-        response_json = response.json()
-
-        return response_json['candidates'][0]['content']['parts'][0]['text']
-    except Exception as e:
-        print(f"Error contacting Gemini API: {e}")
+        response = requests.post(api_url, json=payload, headers=headers)
+        if response.status_code == 200:
+            return response.json().get('answer', 'No answer found!')
+        else:
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling Gemini API: {e}")
         return None
 
-async def check_channel_membership(user_id):
+async def validate_user(update: Update, context):
+    """Validate that the user is a member of the channel."""
+    user = update.message.from_user
     try:
-        result = await application.bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)
-        return result.status in ['member', 'administrator', 'creator']
+        bot_member = await application.bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user.id)
+        if bot_member.status in ['member', 'administrator', 'creator']:
+            return True
+        else:
+            await update.message.reply_text("❗ You need to join our channel to use this bot! Please join here: @your_channel")
+            return False
     except Exception as e:
-        print(f"Error checking membership: {e}")
+        await update.message.reply_text(f"⚠️ Could not verify your membership. Error: {e}")
         return False
 
-# Add command handlers
-application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("help", help_command))
-application.add_handler(CommandHandler("ai", ai))
+# Setup and run Telegram bot
+async def run_bot():
+    global application
 
-# Use asyncio to run both Flask and the bot
+    # Create the application instance
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+
+    # Register the /start and /ai commands
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("ai", ai_command))
+
+    # Initialize the bot
+    await application.initialize()
+
+    # Start polling
+    await application.run_polling()
+
+# Function to start the Flask app in a separate thread
+def start_flask_app():
+    app.run(host='0.0.0.0', port=10000)
+
+# Function to run both the bot and Flask app concurrently
 async def run_bot_and_flask():
-    # Run the bot
-    await application.start()
-    await application.updater.start_polling()
+    # Start the Flask app in a separate thread
+    flask_thread = threading.Thread(target=start_flask_app)
+    flask_thread.start()
 
-    # Run Flask app
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    # Run the Telegram bot
+    await run_bot()
 
-    # Keep bot running
-    await application.updater.idle()
-
-if __name__ == '__main__':
-    # Start the asyncio event loop
+if __name__ == "__main__":
+    # Run the Flask app and Telegram bot
     asyncio.run(run_bot_and_flask())
