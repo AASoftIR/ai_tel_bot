@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler
 
 # Your bot token and channel information
 TELEGRAM_BOT_TOKEN = "7911388028:AAHgr0DOiTYFua3y6dGRBnsoNOxU0soMPmU"
-CHANNEL_ID = "@your_channel"
+CHANNEL_ID = "@aasoft_ir"
 
 # Initialize the Flask app
 app = Flask(__name__)
@@ -91,25 +91,25 @@ async def run_bot():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("ai", ai_command))
 
-    # Initialize the bot
+    # Initialize the bot and start polling
     await application.initialize()
-
-    # Start polling
-    await application.run_polling()
+    await application.start()
+    await application.updater.start_polling()
 
 # Function to start the Flask app in a separate thread
 def start_flask_app():
     app.run(host='0.0.0.0', port=10000)
 
 # Function to run both the bot and Flask app concurrently
-async def run_bot_and_flask():
+def run_bot_and_flask():
     # Start the Flask app in a separate thread
     flask_thread = threading.Thread(target=start_flask_app)
     flask_thread.start()
 
-    # Run the Telegram bot
-    await run_bot()
+    # Run the Telegram bot within the existing event loop
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_bot())
 
 if __name__ == "__main__":
     # Run the Flask app and Telegram bot
-    asyncio.run(run_bot_and_flask())
+    run_bot_and_flask()
